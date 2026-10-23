@@ -119,15 +119,24 @@ export const ProductConfigurator: React.FC<ProductConfiguratorProps> = ({
   // State
   // -------------------------------------------------------------------------
 
+  // A shared configuration from the URL takes precedence over initialConfiguration.
+  const [sharedConfig] = useState(() => {
+    const encoded = new URLSearchParams(window.location.search).get('config');
+    return encoded ? decodeConfigurationFromUrl(encoded) : null;
+  });
+
   const [selections, setSelections] = useState<Record<string, string | number | boolean>>(
-    () => initialConfiguration?.selections || getDefaultSelections(product),
+    () =>
+      sharedConfig?.selections || initialConfiguration?.selections || getDefaultSelections(product),
   );
 
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>(
-    () => initialConfiguration?.addOns || [],
+    () => sharedConfig?.addOns || initialConfiguration?.addOns || [],
   );
 
-  const [quantity, setQuantity] = useState<number>(() => initialConfiguration?.quantity || 1);
+  const [quantity, setQuantity] = useState<number>(
+    () => sharedConfig?.quantity || initialConfiguration?.quantity || 1,
+  );
 
   const [configId] = useState<string>(() => initialConfiguration?.id || generateConfigId());
 
@@ -145,8 +154,6 @@ export const ProductConfigurator: React.FC<ProductConfiguratorProps> = ({
   const [previewUrl, setPreviewUrl] = useState<string>(product.imageUrl);
 
   const [error, setError] = useState<string | null>(null);
-
-  const [shareUrl, setShareUrl] = useState<string>('');
 
   const containerRef = useRef<HTMLDivElement>(null);
   const colorPickerRef = useRef<HTMLDivElement>(null);
@@ -169,6 +176,12 @@ export const ProductConfigurator: React.FC<ProductConfiguratorProps> = ({
     }),
     [configId, product.id, selections, selectedAddOns, quantity, draftName],
   );
+
+  const shareUrl = useMemo(() => {
+    if (!showShareModal) return '';
+    const encoded = encodeConfigurationToUrl(currentConfig);
+    return `${window.location.origin}${window.location.pathname}?config=${encoded}`;
+  }, [showShareModal, currentConfig]);
 
   const {
     price,
@@ -217,7 +230,12 @@ export const ProductConfigurator: React.FC<ProductConfiguratorProps> = ({
           setValidation(result);
           setIsValid(true);
         }
-      } catch {}
+      } catch {
+        if (!cancelled) {
+          setValidation(null);
+          setIsValid(false);
+        }
+      }
     };
 
     validate();
@@ -249,39 +267,14 @@ export const ProductConfigurator: React.FC<ProductConfiguratorProps> = ({
   }, [currentConfig, product]);
 
   useEffect(() => {
-    if (onConfigurationChange) {
-      onConfigurationChange(currentConfig);
-    }
-    setIsDirty(true);
-  }, [selections, selectedAddOns, quantity]);
+    onConfigurationChange?.(currentConfig);
+  }, [currentConfig, onConfigurationChange]);
 
   useEffect(() => {
     if (showDraftModal) {
       getAllDrafts().then(setDrafts);
     }
   }, [showDraftModal]);
-
-  useEffect(() => {
-    if (showShareModal) {
-      const encoded = encodeConfigurationToUrl(currentConfig);
-      const url = `${window.location.origin}${window.location.pathname}?config=${encoded}`;
-      setShareUrl(url);
-    }
-  }, [showShareModal, currentConfig]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const encodedConfig = params.get('config');
-
-    if (encodedConfig) {
-      const decoded = decodeConfigurationFromUrl(encodedConfig);
-      if (decoded) {
-        if (decoded.selections) setSelections(decoded.selections);
-        if (decoded.addOns) setSelectedAddOns(decoded.addOns);
-        if (decoded.quantity) setQuantity(decoded.quantity);
-      }
-    }
-  }, []);
 
   // -------------------------------------------------------------------------
   // Event Handlers
@@ -293,6 +286,7 @@ export const ProductConfigurator: React.FC<ProductConfiguratorProps> = ({
         ...prev,
         [optionId]: value,
       }));
+      setIsDirty(true);
 
       const option = product.options.find((o) => o.id === optionId);
       // Clean up any dependent add-ons whose requirement is no longer met.
@@ -331,6 +325,7 @@ export const ProductConfigurator: React.FC<ProductConfiguratorProps> = ({
           return [...prev, addOnId];
         }
       });
+      setIsDirty(true);
     },
     [product.addOns, selections],
   );
@@ -343,6 +338,7 @@ export const ProductConfigurator: React.FC<ProductConfiguratorProps> = ({
 
       const clampedQuantity = Math.max(min, Math.min(max, newQuantity));
       setQuantity(clampedQuantity);
+      setIsDirty(true);
     },
     [product.options],
   );
