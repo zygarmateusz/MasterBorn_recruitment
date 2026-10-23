@@ -220,7 +220,10 @@ export function encodeConfigurationToUrl(config: Configuration): string {
     n: config.name,
   });
 
-  return btoa(data);
+  const bytes = new TextEncoder().encode(data);
+  const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
+
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 /**
@@ -228,7 +231,9 @@ export function encodeConfigurationToUrl(config: Configuration): string {
  */
 export function decodeConfigurationFromUrl(encoded: string): Partial<Configuration> | null {
   try {
-    const data = JSON.parse(atob(encoded));
+    const binary = atob(encoded.replace(/-/g, '+').replace(/_/g, '/'));
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    const data = JSON.parse(new TextDecoder().decode(bytes));
     return {
       selections: data.s || {},
       addOns: data.a || [],
