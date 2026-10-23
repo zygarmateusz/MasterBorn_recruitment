@@ -498,6 +498,10 @@
   overflow-y: auto;
 }
 
+.modal:focus {
+  outline: none;
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;

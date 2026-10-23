@@ -158,6 +158,7 @@ export const ProductConfigurator: React.FC<ProductConfiguratorProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const colorPickerRef = useRef<HTMLDivElement>(null);
   const lastFocusedElement = useRef<HTMLElement | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   // -------------------------------------------------------------------------
   // Derived State
@@ -265,6 +266,12 @@ export const ProductConfigurator: React.FC<ProductConfiguratorProps> = ({
       getAllDrafts().then(setDrafts);
     }
   }, [showDraftModal]);
+
+  useEffect(() => {
+    if (showDraftModal || showShareModal) {
+      modalRef.current?.focus();
+    }
+  }, [showDraftModal, showShareModal]);
 
   // -------------------------------------------------------------------------
   // Event Handlers
@@ -686,9 +693,19 @@ export const ProductConfigurator: React.FC<ProductConfiguratorProps> = ({
         onClick={() => handleModalClose('draft')}
         onKeyDown={(e) => handleModalKeyDown(e, 'draft')}
       >
-        <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="modal"
+          ref={modalRef}
+          tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="draft-modal-title"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="modal-header">
-            <h3 className="modal-title">Saved Drafts</h3>
+            <h3 className="modal-title" id="draft-modal-title">
+              Saved Drafts
+            </h3>
             <button
               className="modal-close"
               onClick={() => handleModalClose('draft')}
@@ -768,9 +785,19 @@ export const ProductConfigurator: React.FC<ProductConfiguratorProps> = ({
         onClick={() => handleModalClose('share')}
         onKeyDown={(e) => handleModalKeyDown(e, 'share')}
       >
-        <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="modal"
+          ref={modalRef}
+          tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="share-modal-title"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="modal-header">
-            <h3 className="modal-title">Share Configuration</h3>
+            <h3 className="modal-title" id="share-modal-title">
+              Share Configuration
+            </h3>
             <button
               className="modal-close"
               onClick={() => handleModalClose('share')}
